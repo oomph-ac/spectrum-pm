@@ -39,15 +39,17 @@ final class ConnectionRequestPacket extends ProxyPacket
 {
     public const NETWORK_ID = ProxyPacketIds::CONNECTION_REQUEST;
 
+    public int $protocol;
     public string $address;
     public string $token;
 
     public array $clientData;
     public array $identityData;
 
-    public static function create(string $address, string $token, array $clientData, array $identityData): ConnectionRequestPacket
+    public static function create(int $protocolId, string $address, string $token, array $clientData, array $identityData): ConnectionRequestPacket
     {
         $packet = new ConnectionRequestPacket();
+        $packet->protocol = $protocolId;
         $packet->address = $address;
         $packet->token = $token;
         $packet->clientData = $clientData;
@@ -57,6 +59,8 @@ final class ConnectionRequestPacket extends ProxyPacket
 
     public function decodePayload(PacketSerializer $in): void
     {
+        $this->protocol = $in->getVarInt();
+
         $this->address = $in->getString();
         $this->token = $in->getString();
 
@@ -66,6 +70,8 @@ final class ConnectionRequestPacket extends ProxyPacket
 
     public function encodePayload(PacketSerializer $out): void
     {
+        $out->putVarInt($this->protocol);
+
         $out->putString($this->address);
         $out->putString($this->token);
 
