@@ -102,7 +102,7 @@ final class ProxyInterface implements NetworkInterface
      */
     private array $sessions = [];
 
-    public function __construct(private readonly Spectrum $plugin, private readonly array $decode)
+    public function __construct(private readonly Spectrum $plugin, private array $decode)
     {
         $threadToMain = new ThreadSafeArray();
         $mainToThread = new ThreadSafeArray();
@@ -140,6 +140,10 @@ final class ProxyInterface implements NetworkInterface
             $this->sentBytes = 0;
             $this->receivedBytes = 0;
         }), 20, 20);
+    }
+
+    public function setShouldDecodePacket(int $packetID, bool $decode = true): void {
+        $this->decode[$packetID] = $decode;
     }
 
     private function handleIncoming(string $payload): void
