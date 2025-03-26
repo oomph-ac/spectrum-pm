@@ -40,7 +40,7 @@ final class ProxyPacketPool extends PMPacketPool
     {
         parent::__construct();
 
-        $this->pool->setSize($this->pool->getSize() + 6);
+        $this->pool->setSize($this->pool->getSize() + 7);
 
         $this->registerPacket(new ConnectionRequestPacket());
         $this->registerPacket(new ConnectionResponsePacket());
@@ -48,6 +48,7 @@ final class ProxyPacketPool extends PMPacketPool
         $this->registerPacket(new LatencyPacket());
         $this->registerPacket(new LoginPacket());
         $this->registerPacket(new TransferPacket());
+        $this->registerPacket(new EOBNotificationPacket());
     }
 
     public static function getInstance(): ProxyPacketPool

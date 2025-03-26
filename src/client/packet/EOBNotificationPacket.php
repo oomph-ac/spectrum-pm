@@ -30,15 +30,17 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client\packet;
 
-interface ProxyPacketIds
-{
-    public const CONNECTION_REQUEST = 500;
-    public const CONNECTION_RESPONSE = 501;
-    public const LATENCY = 502;
-    public const TRANSFER = 503;
+use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
 
-    public const LOGIN = 504;
-    public const DISCONNECT = 505;
-    
-    public const EOB_NOTIFICATION = 506;
+final class EOBNotificationPacket extends ProxyPacket
+{
+    public const NETWORK_ID = ProxyPacketIds::EOB_NOTIFICATION;
+
+    public static function create(): EOBNotificationPacket
+    {
+        return new EOBNotificationPacket();
+    }
+
+    protected function decodePayload(PacketSerializer $in): void {}
+    protected function encodePayload(PacketSerializer $out): void {}
 }
