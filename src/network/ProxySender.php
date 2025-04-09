@@ -50,7 +50,7 @@ final class ProxySender implements PacketSender
 
         $stream = new BinaryStream(substr($payload, 1));
         foreach (PacketBatch::decodeRaw($stream) as $packet) {
-            $this->interface->sendOutgoingRaw($this->identifier, $packet, $receiptId);
+            $this->interface->sendOutgoingRaw($this->identifier, $packet, null);
         }
         // Notify the proxy when the end-of-batch is reached.
         $this->interface->sendOutgoing($this->identifier, new EOBNotificationPacket(), $receiptId);
