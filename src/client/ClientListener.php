@@ -30,14 +30,10 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client;
 
-use cooldogedev\spectral\util\Address;
 use cooldogedev\Spectrum\client\packet\DisconnectPacket;
 use cooldogedev\Spectrum\client\packet\LoginPacket;
 use cooldogedev\Spectrum\client\packet\ProxyPacketPool;
 use cooldogedev\Spectrum\client\packet\ProxySerializer;
-use cooldogedev\spectral\Listener;
-use cooldogedev\spectral\ServerConnection;
-use cooldogedev\spectral\Stream;
 use Exception;
 use pmmp\thread\ThreadSafeArray;
 use pocketmine\network\mcpe\raklib\PthreadsChannelReader;
@@ -45,11 +41,27 @@ use pocketmine\network\mcpe\raklib\SnoozeAwarePthreadsChannelWriter;
 use pocketmine\snooze\SleeperHandlerEntry;
 use pocketmine\thread\log\ThreadSafeLogger;
 use Socket;
+use function socket_accept;
+use function socket_bind;
+use function socket_create;
+use function socket_listen;
 use function socket_read;
+use function socket_set_nonblock;
+use function socket_set_option;
+use const AF_INET;
+use const SOCK_STREAM;
+use const SOL_TCP;
+use const TCP_NODELAY;
+use const SO_LINGER;
+use const SO_RCVBUF;
+use const SO_SNDBUF;
 
 final class ClientListener
 {
-    private readonly Listener $listener;
+    private const READ_BUFFER_SIZE = 8 * 1024 * 1024; // 8MB
+    private const WRITE_BUFFER_SIZE = 8 * 1024 * 1024; // 8MB
+
+    private Socket $socket;
     private int $nextId = 0;
     /**
      * @phpstan-var array<int, Client>
@@ -75,33 +87,57 @@ final class ClientListener
 
     public function start(): void
     {
-        $streamAcceptor = function (Address $address, Stream $stream): void {
-            $identifier = $this->nextId;
-            $this->nextId++;
-            $stream->registerCloseHandler(fn () => $this->disconnect($identifier, true));
-            $this->clients[$identifier] = new Client(
-                stream: $stream,
-                logger: $this->logger,
-                writer: $this->threadToMain,
-                id: $identifier,
-            );
-            $this->threadToMain->write(ProxySerializer::encode($identifier, LoginPacket::create($address->address, $address->port)));
-            $this->logger->debug("Accepted client " . $this->nextId . " from " . $address->toString());
-        };
-        $this->listener = Listener::listen("0.0.0.0", $this->port);
-        $this->listener->setConnectionAcceptor(function (ServerConnection $connection) use ($streamAcceptor): void {
-            $this->logger->debug("Accepted connection from " . $connection->getRemoteAddress()->toString());
-            $connection->setStreamAcceptor(fn (Stream $stream) => $streamAcceptor($connection->getRemoteAddress(), $stream));
-        });
-        $this->listener->registerSocket($this->notificationSocket, function (): void {
-            @socket_read($this->notificationSocket, 65535);
-            $this->write();
-        });
+        $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        socket_set_nonblock($this->socket);
+        socket_bind($this->socket, "0.0.0.0", $this->port);
+        socket_listen($this->socket);
+        socket_set_nonblock($this->notificationSocket); 
+        $this->logger->info("Started listening on TCP port " . $this->port);
     }
 
     public function tick(): void
     {
-        $this->listener->tick();
+        // Accept new connections
+        while (($clientSocket = @socket_accept($this->socket)) !== false) {
+            socket_set_nonblock($clientSocket);
+            
+            // Set TCP options
+            socket_set_option($clientSocket, SOL_TCP, TCP_NODELAY, 1);
+            
+            $linger = ["l_onoff" => 1, "l_linger" => 0];
+            socket_set_option($clientSocket, SOL_SOCKET, SO_LINGER, $linger);
+            
+            socket_set_option($clientSocket, SOL_SOCKET, SO_RCVBUF, self::READ_BUFFER_SIZE);
+            socket_set_option($clientSocket, SOL_SOCKET, SO_SNDBUF, self::WRITE_BUFFER_SIZE);
+            
+            $identifier = $this->nextId++;
+            $client = new Client(
+                socket: $clientSocket,
+                logger: $this->logger,
+                writer: $this->threadToMain,
+                id: $identifier,
+            );
+            $this->clients[$identifier] = $client;
+
+            // Get client address
+            socket_getpeername($clientSocket, $address, $port);
+            $this->threadToMain->write(ProxySerializer::encode($identifier, LoginPacket::create($address, $port)));
+            $this->logger->debug("Accepted client " . $identifier . " from " . $address . ":" . $port);
+        }
+
+        // Handle existing clients
+        foreach ($this->clients as $identifier => $client) {
+            try {
+                $client->tick();
+            } catch (Exception $exception) {
+                $this->disconnect($identifier, true);
+                $this->logger->logException($exception);
+            }
+        }
+
+        // Check for notifications
+        @socket_read($this->notificationSocket, 65535);
+        $this->write();
     }
 
     private function write(): void
@@ -148,6 +184,6 @@ final class ClientListener
             $client->close();
             unset($this->clients[$client->id]);
         }
-        $this->listener->close();
+        socket_close($this->socket);
     }
 }

@@ -62,7 +62,7 @@ final class ClientThread extends Thread
 
         ini_set("display_errors", "1");
         ini_set("display_startup_errors", "1");
-        ini_set("memory_limit", "512M");
+        ini_set("memory_limit", "1024M");
 
         GlobalLogger::set($this->logger);
 
@@ -79,12 +79,12 @@ final class ClientThread extends Thread
             threadToMain: $this->threadToMain,
         );
         $listener->start();
-        $this->logger->info("Listening on port " . $this->port);
+        $this->logger->info("Listening w/ TCP on port " . $this->port);
         while ($this->running) {
             $listener->tick();
         }
         $listener->close();
-        $this->logger->info("Stopped listening on port " . $this->port);
+        $this->logger->info("Stopped listening w/ TCP on port " . $this->port);
     }
 
     public function quit(): void
