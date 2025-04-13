@@ -80,12 +80,15 @@ final class Client
             }
             // Real error occurred
             $this->logger->debug("Socket read failed: " . socket_strerror($error));
-            throw new \Exception("Socket read failed: " . socket_strerror($error));
+            $this->close();
+            return;
         }
         
         if ($data === "") {
             // Connection closed by peer
-            throw new \Exception("Connection closed by peer");
+            $this->logger->debug("Connection closed by peer");
+            $this->close();
+            return;
         }
 
         $this->buffer .= $data;
@@ -136,7 +139,9 @@ final class Client
                 $compressed;
 
         if (@socket_write($this->socket, $data) === false) {
-            throw new \Exception("Socket write failed");
+            $this->logger->debug("failed to write data to socket: " . socket_strerror(socket_last_error($this->socket)));
+            $this->close();
+            return;
         }
     }
 
