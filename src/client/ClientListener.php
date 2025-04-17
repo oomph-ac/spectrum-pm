@@ -102,10 +102,10 @@ final class ClientListener
             socket_set_nonblock($clientSocket);
             
             // Set TCP options
-            socket_set_option($clientSocket, SOL_TCP, TCP_NODELAY, 1);
+            //socket_set_option($clientSocket, SOL_TCP, TCP_NODELAY, 1);
             
-            $linger = ["l_onoff" => 1, "l_linger" => 0];
-            socket_set_option($clientSocket, SOL_SOCKET, SO_LINGER, $linger);
+            //$linger = ["l_onoff" => 1, "l_linger" => 0];
+            //socket_set_option($clientSocket, SOL_SOCKET, SO_LINGER, $linger);
             
             socket_set_option($clientSocket, SOL_SOCKET, SO_RCVBUF, self::READ_BUFFER_SIZE);
             socket_set_option($clientSocket, SOL_SOCKET, SO_SNDBUF, self::WRITE_BUFFER_SIZE);
