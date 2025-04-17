@@ -64,6 +64,10 @@ final class Client
         public readonly int                              $id,
     ) {}
 
+    public function isClosed(): bool {
+        return $this->closed;
+    }
+
     public function tick(): void
     {
         if ($this->closed) {

@@ -127,6 +127,11 @@ final class ClientListener
 
         // Handle existing clients
         foreach ($this->clients as $identifier => $client) {
+            if ($client->isClosed()) {
+                $this->disconnect($identifier, true);
+                continue;
+            }
+
             try {
                 $client->tick();
             } catch (Exception $exception) {
