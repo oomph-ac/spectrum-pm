@@ -138,14 +138,36 @@ final class Client
         }
 
         $compressed = @snappy_compress($buffer);
+        if ($compressed === false || !is_string($compressed)) {
+            $this->logger->error("unexpected failure with SNAPPY_COMPRESS");
+            $this->close();
+            return;
+        }
+
         $data = Binary::writeInt(strlen($compressed) + 1) .
                 Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) .
                 $compressed;
 
-        if (@socket_write($this->socket, $data) === false) {
-            $this->logger->debug("failed to write data to socket: " . socket_strerror(socket_last_error($this->socket)));
-            $this->close();
-            return;
+        $dataLength = strlen($data);
+        $totalSent = 0;
+        $writeAttempts = 0;
+
+        while ($totalSent < $dataLength) {
+            $sent = @socket_write($this->socket, substr($data, $totalSent));
+            if ($sent === false) {
+                $this->logger->debug("failed to write data to socket: " . socket_strerror(socket_last_error($this->socket)));
+                $this->close();
+                return;
+            }
+            if ($sent === 0) {
+                $writeAttempts++;
+                if ($writeAttempts > 10) {
+                    $this->logger->debug("socket_write wrote 0 bytes for 10 times, closing connection");
+                    $this->close();
+                    return;
+                }
+            }
+            $totalSent += $sent;
         }
     }
 
