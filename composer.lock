@@ -4,24 +4,24 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7797e84e73e30bf1b1f45d857537c6fc",
+    "content-hash": "684bf007a588fc560f4ebded6218980e",
     "packages": [
         {
             "name": "cooldogedev/spectral-php",
             "version": "dev-main",
             "source": {
                 "type": "git",
-                "url": "https://github.com/cooldogedev/spectral-php.git",
-                "reference": "b29ca496473576fdcab3275ab92cdc367f15e8bc"
+                "url": "https://github.com/alvin0319/spectral-php.git",
+                "reference": "847ee7f8be58a14bc296f0ae9edd820c473ecd2e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cooldogedev/spectral-php/zipball/b29ca496473576fdcab3275ab92cdc367f15e8bc",
-                "reference": "b29ca496473576fdcab3275ab92cdc367f15e8bc",
+                "url": "https://api.github.com/repos/alvin0319/spectral-php/zipball/847ee7f8be58a14bc296f0ae9edd820c473ecd2e",
+                "reference": "847ee7f8be58a14bc296f0ae9edd820c473ecd2e",
                 "shasum": ""
             },
             "require": {
-                "ext-encoding": "*",
+                "ext-encoding": "^1.0.0",
                 "ext-sockets": "*",
                 "symfony/filesystem": "^7.1"
             },
@@ -32,7 +32,14 @@
                     "cooldogedev\\spectral\\": "src/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "scripts": {
+                "client": [
+                    "@php example/client.php"
+                ],
+                "server": [
+                    "@php example/server.php"
+                ]
+            },
             "license": [
                 "MIT"
             ],
@@ -43,23 +50,22 @@
                 }
             ],
             "support": {
-                "issues": "https://github.com/cooldogedev/spectral-php/issues",
-                "source": "https://github.com/cooldogedev/spectral-php/tree/v0.0.5"
+                "source": "https://github.com/alvin0319/spectral-php/tree/main"
             },
-            "time": "2024-12-19T02:54:16+00:00"
+            "time": "2025-09-22T11:23:47+00:00"
         },
         {
             "name": "symfony/filesystem",
-            "version": "7.3.x-dev",
+            "version": "7.4.x-dev",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/filesystem.git",
-                "reference": "b8dce482de9d7c9fe2891155035a7248ab5c7fdb"
+                "reference": "633c6fdfb2eac90041c2de30ad1ccff95a671f66"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/filesystem/zipball/b8dce482de9d7c9fe2891155035a7248ab5c7fdb",
-                "reference": "b8dce482de9d7c9fe2891155035a7248ab5c7fdb",
+                "url": "https://api.github.com/repos/symfony/filesystem/zipball/633c6fdfb2eac90041c2de30ad1ccff95a671f66",
+                "reference": "633c6fdfb2eac90041c2de30ad1ccff95a671f66",
                 "shasum": ""
             },
             "require": {
@@ -68,7 +74,7 @@
                 "symfony/polyfill-mbstring": "~1.8"
             },
             "require-dev": {
-                "symfony/process": "^6.4|^7.0"
+                "symfony/process": "^6.4|^7.0|^8.0"
             },
             "type": "library",
             "autoload": {
@@ -96,7 +102,7 @@
             "description": "Provides basic utilities for the filesystem",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/filesystem/tree/v7.2.0"
+                "source": "https://github.com/symfony/filesystem/tree/7.4"
             },
             "funding": [
                 {
@@ -108,11 +114,15 @@
                     "type": "github"
                 },
                 {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
                     "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-10-25T15:15:23+00:00"
+            "time": "2025-08-12T20:20:59+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",
@@ -176,7 +186,7 @@
                 "portable"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-ctype/tree/v1.31.0"
+                "source": "https://github.com/symfony/polyfill-ctype/tree/v1.33.0"
             },
             "funding": [
                 {
@@ -188,6 +198,10 @@
                     "type": "github"
                 },
                 {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
                     "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
                     "type": "tidelift"
                 }
@@ -196,20 +210,19 @@
         },
         {
             "name": "symfony/polyfill-mbstring",
-            "version": "1.x-dev",
+            "version": "v1.31.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-mbstring.git",
-                "reference": "6d857f4d76bd4b343eac26d6b539585d2bc56493"
+                "reference": "85181ba99b2345b0ef10ce42ecac37612d9fd341"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-mbstring/zipball/6d857f4d76bd4b343eac26d6b539585d2bc56493",
-                "reference": "6d857f4d76bd4b343eac26d6b539585d2bc56493",
+                "url": "https://api.github.com/repos/symfony/polyfill-mbstring/zipball/85181ba99b2345b0ef10ce42ecac37612d9fd341",
+                "reference": "85181ba99b2345b0ef10ce42ecac37612d9fd341",
                 "shasum": ""
             },
             "require": {
-                "ext-iconv": "*",
                 "php": ">=7.2"
             },
             "provide": {
@@ -218,7 +231,6 @@
             "suggest": {
                 "ext-mbstring": "For best performance"
             },
-            "default-branch": true,
             "type": "library",
             "extra": {
                 "thanks": {
@@ -258,7 +270,7 @@
                 "shim"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-mbstring/tree/1.x"
+                "source": "https://github.com/symfony/polyfill-mbstring/tree/v1.31.0"
             },
             "funding": [
                 {
@@ -274,7 +286,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-12-23T08:48:59+00:00"
+            "time": "2024-09-09T11:45:10+00:00"
         }
     ],
     "packages-dev": [],
@@ -291,6 +303,6 @@
         "ext-snappy": "*",
         "ext-encoding": "*"
     },
-    "platform-dev": [],
+    "platform-dev": {},
     "plugin-api-version": "2.6.0"
 }

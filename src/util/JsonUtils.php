@@ -48,8 +48,9 @@ final class JsonUtils
 
         try {
             $result = $mapper->map($json, $object);
-        } catch (JsonMapper_Exception) {
-            return null;
+        } catch (JsonMapper_Exception $e) {
+   		var_dump($e->getMessage());
+	         return null;
         }
 
         return $result;

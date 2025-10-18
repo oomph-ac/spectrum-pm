@@ -30,7 +30,10 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client\packet;
 
-use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
+use pmmp\encoding\ByteBufferReader;
+use pmmp\encoding\ByteBufferWriter;
+use pmmp\encoding\LE;
+use pocketmine\network\mcpe\protocol\serializer\CommonTypes;
 
 final class LoginPacket extends ProxyPacket
 {
@@ -47,15 +50,15 @@ final class LoginPacket extends ProxyPacket
         return $packet;
     }
 
-    protected function decodePayload(PacketSerializer $in): void
+    protected function decodePayload(ByteBufferReader $in, int $protocolID): void
     {
-        $this->address = $in->getString();
-        $this->port = $in->getLShort();
+        $this->address = CommonTypes::getString($in);
+        $this->port = LE::readSignedShort($in);
     }
 
-    protected function encodePayload(PacketSerializer $out): void
+    protected function encodePayload(ByteBufferWriter $out, int $protocolID): void
     {
-        $out->putString($this->address);
-        $out->putLShort($this->port);
+		CommonTypes::putString($out, $this->address);
+		LE::writeSignedShort($out, $this->port);
     }
 }

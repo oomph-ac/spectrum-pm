@@ -30,17 +30,31 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client\packet;
 
-use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
+use pmmp\encoding\ByteBufferReader;
+use pmmp\encoding\ByteBufferWriter;
+use pocketmine\network\mcpe\protocol\ClientboundPacket;
+use pocketmine\network\mcpe\protocol\serializer\CommonTypes;
 
-final class EOBNotificationPacket extends ProxyPacket
+final class UpdateCachePacket extends ProxyPacket implements ClientboundPacket
 {
-    public const NETWORK_ID = ProxyPacketIds::EOB_NOTIFICATION;
+	public const NETWORK_ID = ProxyPacketIds::UPDATE_CACHE;
 
-    public static function create(): EOBNotificationPacket
-    {
-        return new EOBNotificationPacket();
-    }
+	public string $cache;
 
-    protected function decodePayload(PacketSerializer $in): void {}
-    protected function encodePayload(PacketSerializer $out): void {}
+	public static function create(string $cache): UpdateCachePacket
+	{
+		$packet = new UpdateCachePacket();
+		$packet->cache = $cache;
+		return $packet;
+	}
+
+	public function decodePayload(ByteBufferReader $in, int $protocolID): void
+	{
+		$this->cache = CommonTypes::getString($in);
+	}
+
+	public function encodePayload(ByteBufferWriter $out, int $protocolID): void
+	{
+		CommonTypes::putString($out, $this->cache);
+	}
 }

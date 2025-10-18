@@ -2,7 +2,7 @@
     "name": "cooldogedev/spectrum",
     "type": "project",
     "license": "MIT",
-    "version": "0.0.15",
+    "version": "0.0.19",
     "autoload": {
         "psr-4": {
             "cooldogedev\\Spectrum\\": "src/"
@@ -20,6 +20,12 @@
         "ext-pmmpthread": "*",
         "ext-snappy": "*",
         "ext-encoding": "*",
-        "cooldogedev/spectral-php": "dev-main#b29ca496473576fdcab3275ab92cdc367f15e8bc"
-    }
+        "cooldogedev/spectral-php": "dev-main#847ee7f8be58a14bc296f0ae9edd820c473ecd2e"
+    },
+	"repositories": [
+		{
+			"type": "vcs",
+			"url": "https://github.com/alvin0319/spectral-php"
+		}
+	]
 }

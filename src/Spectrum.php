@@ -37,6 +37,7 @@ use cooldogedev\Spectrum\network\ProxyInterface;
 use cooldogedev\Spectrum\util\ComposerRegisterAsyncTask;
 use pocketmine\event\EventPriority;
 use pocketmine\event\server\NetworkInterfaceRegisterEvent;
+use pocketmine\network\mcpe\encryption\EncryptionContext;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\network\mcpe\protocol\types\login\AuthenticationData;
 use pocketmine\network\mcpe\raklib\RakLibInterface;
@@ -51,8 +52,10 @@ final class Spectrum extends PluginBase
 {
     private array $decode = [
 		ProxyPacketIds::CONNECTION_RESPONSE => true,
+		ProxyPacketIds::FLUSH => true,
 		ProxyPacketIds::LATENCY => true,
 		ProxyPacketIds::TRANSFER => true,
+		ProxyPacketIds::UPDATE_CACHE => true,
 
 		ProtocolInfo::ADD_ACTOR_PACKET => true,
 		ProtocolInfo::ADD_ITEM_ACTOR_PACKET => true,
@@ -77,31 +80,32 @@ final class Spectrum extends PluginBase
 		ProtocolInfo::START_GAME_PACKET => true,
 	];
 
+    /**
+     * @var array<string, array{0: int, 1: string}>
+     */
+    private array $cache = [];
+
     public readonly ProxyInterface $interface;
 	public readonly ?APIThread $api;
-	/**
-	 * @var Closure(AuthenticationData $authenticationData, string $token):bool | null
-	 */
-	public ?Closure $authenticator;
 
     protected function onLoad(): void
     {
-        if (is_file(COMPOSER_AUTOLOADER_PATH)) {
-            require_once(COMPOSER_AUTOLOADER_PATH);
-
-            $asyncPool = $this->getServer()->getAsyncPool();
-            $asyncPool->addWorkerStartHook(static function (int $workerId) use ($asyncPool): void {
-                $asyncPool->submitTaskToWorker(new ComposerRegisterAsyncTask(COMPOSER_AUTOLOADER_PATH), $workerId);
-            });
-        } else {
+        if (!is_file(COMPOSER_AUTOLOADER_PATH)) {
             $this->getLogger()->error("Composer autoloader not found at " . COMPOSER_AUTOLOADER_PATH);
             $this->getLogger()->error("Please install or update Composer dependencies or use provided builds.");
             $this->getServer()->shutdown();
+            return;
         }
+        require_once(COMPOSER_AUTOLOADER_PATH);
+        $asyncPool = $this->getServer()->getAsyncPool();
+        $asyncPool->addWorkerStartHook(static function (int $workerId) use ($asyncPool): void {
+            $asyncPool->submitTaskToWorker(new ComposerRegisterAsyncTask(COMPOSER_AUTOLOADER_PATH), $workerId);
+        });
     }
 
     protected function onEnable(): void
     {
+		EncryptionContext::$ENABLED = false;
         if ($this->getConfig()->getNested("api.enabled"))  {
             $this->api = new APIThread(
                 logger: $this->getServer()->getLogger(),
@@ -114,8 +118,7 @@ final class Spectrum extends PluginBase
             $this->api = null;
         }
 
-		$this->authenticator = fn (AuthenticationData $authenticationData, string $token): bool => $token === $this->getConfig()->get("secret");
-		$this->interface = new ProxyInterface($this, $this->decode);
+		$this->interface = new ProxyInterface($this);
         $server = $this->getServer();
         $server->getNetwork()->registerInterface($this->interface);
         if ($this->getConfig()->get("disable-raklib")) {
@@ -133,8 +136,37 @@ final class Spectrum extends PluginBase
         }
     }
 
+    public function shouldPacketDecode(int $packetID): bool
+    {
+        return $this->decode[$packetID] ?? false;
+    }
+
 	public function registerPacketDecode(int $packetID, bool $value): void
 	{
 		$this->decode[$packetID] = $value;
 	}
+
+    /**
+     * @return array{0: int, 1: string}|null
+     */
+    public function getCache(string $xuid): ?array
+    {
+        return $this->cache[$xuid] ?? null;
+    }
+
+    /**
+     * @internal
+     */
+    public function setCache(string $xuid, string $data, int $protocolID): void
+    {
+        $this->cache[$xuid] = [$data, $protocolID];
+    }
+
+    /**
+     * @internal
+     */
+    public function deleteCache(string $xuid): void
+    {
+        unset($this->cache[$xuid]);
+    }
 }

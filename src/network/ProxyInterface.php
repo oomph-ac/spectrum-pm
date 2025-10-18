@@ -43,6 +43,8 @@ use cooldogedev\Spectrum\client\packet\ProxySerializer;
 use cooldogedev\Spectrum\Spectrum;
 use cooldogedev\Spectrum\util\JsonUtils;
 use Exception;
+use pmmp\encoding\ByteBufferReader;
+use pmmp\encoding\ByteBufferWriter;
 use pmmp\thread\ThreadSafeArray;
 use pocketmine\event\player\PlayerPreLoginEvent;
 use pocketmine\lang\KnownTranslationFactory;
@@ -54,8 +56,9 @@ use pocketmine\network\mcpe\protocol\Packet;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
 use pocketmine\network\mcpe\protocol\types\login\AuthenticationData;
-use pocketmine\network\mcpe\protocol\types\login\ClientData;
-use pocketmine\network\mcpe\protocol\types\login\ClientDataToSkinDataHelper;
+use pocketmine\network\mcpe\protocol\types\login\clientdata\ClientData;
+use pocketmine\network\mcpe\protocol\types\login\clientdata\ClientDataToSkinDataHelper;
+use pocketmine\network\mcpe\protocol\types\login\legacy\LegacyAuthIdentityData;
 use pocketmine\network\mcpe\raklib\PthreadsChannelReader;
 use pocketmine\network\mcpe\raklib\PthreadsChannelWriter;
 use pocketmine\network\mcpe\StandardEntityEventBroadcaster;
@@ -104,7 +107,7 @@ final class ProxyInterface implements NetworkInterface
      */
     private array $sessions = [];
 
-    public function __construct(private readonly Spectrum $plugin, private array $decode)
+    public function __construct(private readonly Spectrum $plugin)
     {
         $threadToMain = new ThreadSafeArray();
         $mainToThread = new ThreadSafeArray();
@@ -155,7 +158,7 @@ final class ProxyInterface implements NetworkInterface
         $packet = ProxyPacketPool::getInstance()->getPacket($buffer);
         if ($packet === null) {
             $this->plugin->getLogger()->debug("Received unknown packet from client " . $identifier);
-            $this->disconnect($identifier, true);
+            $this->disconnect($identifier, true, "Unknown packet received");
             return;
         }
 
@@ -163,19 +166,19 @@ final class ProxyInterface implements NetworkInterface
         try {
             if ($packet instanceof ProxyPacket) {
                 $protocolId = $session !== null ? $session->getProtocolId() : ProtocolInfo::CURRENT_PROTOCOL;
-                $packet->decode(PacketSerializer::decoder($protocolId, $buffer, 0));
+                $packet->decode(new ByteBufferReader($buffer), $protocolId);
                 match (true) {
                     $packet instanceof LoginPacket => $this->login($identifier, $packet->address, $packet->port, $protocolId),
-                    $packet instanceof ConnectionRequestPacket && $session !== null => $this->connect($session, $identifier, $packet->protocol, $packet->address, $packet->token, $packet->clientData, $packet->identityData),
+                    $packet instanceof ConnectionRequestPacket && $session !== null => $this->connect($session, $identifier, $packet->address, $packet->protocolID, $packet->clientData, $packet->identityData, $packet->cache),
                     $packet instanceof LatencyPacket && $session !== null => $this->latency($session, $identifier, $packet->latency, $packet->timestamp),
-                    $packet instanceof DisconnectPacket => $this->disconnect($identifier, false),
+                    $packet instanceof DisconnectPacket => $this->disconnect($identifier, false, "Proxy caused disconnection"),
                     default => null,
                 };
             } else {
                 $session?->handleDataPacket($packet, $buffer);
             }
         } catch (Exception $exception) {
-            $this->disconnect($identifier, true);
+            $this->disconnect($identifier, true, "Error occured during packet process");
             $this->plugin->getLogger()->logException($exception);
         }
     }
@@ -207,21 +210,18 @@ final class ProxyInterface implements NetworkInterface
         $this->sessions[$identifier] = $session;
     }
 
-    private function connect(NetworkSession $session, int $identifier, int $protocolId, string $address, string $token, array $clientData, array $identityData): void
+    private function connect(NetworkSession $session, int $identifier, string $address, int $protocolID, array $clientData, array $identityData, string $cache): void
     {
+        $session->setProtocolId($protocolID);
         [$ip, $port] = explode(":", $address);
         $server = $this->plugin->getServer();
-        $clientData = JsonUtils::map($clientData, new ClientData());
-        $identityData = JsonUtils::map($identityData, new AuthenticationData());
-        if ($clientData === null || $identityData === null) {
-            $session->disconnectWithError(KnownTranslationFactory::pocketmine_disconnect_error_authentication());
-            return;
-        }
-
-        // Allow NG-PM to be notified of the client's protocol ID (this will be done if SyncProtocol is enabled)
-        $session->setProtocolId($protocolId);
-
-        if ($this->plugin->authenticator !== null && !($this->plugin->authenticator)($identityData, $token)) {
+		unset($clientData["PlayFabId"]); // PlayFabId was removed as of 1.21.111, but LegacyAuthIdentityData still has it /shrug
+		unset($clientData["ThirdPartyNameOnly"]);
+		$clientData = JsonUtils::map($clientData, new ClientData());// Allow NG-PM to be notified of the client's protocol ID (this will be done if SyncProtocol is enabled)
+		$identityData = JsonUtils::map($identityData, new LegacyAuthIdentityData());
+		/** @var ClientData $clientData */
+		/** @var LegacyAuthIdentityData $identityData */
+		if ($clientData === null || $identityData === null) {
             $session->disconnectWithError(KnownTranslationFactory::pocketmine_disconnect_error_authentication());
             return;
         }
@@ -250,7 +250,6 @@ final class ProxyInterface implements NetworkInterface
             locale: $clientData->LanguageCode,
             extraData: (array)$clientData,
         );
-
         Closure::bind(function () use ($ip, $port, $playerInfo): void {
             $this->ip = $ip;
             $this->port = (int)$port;
@@ -270,7 +269,6 @@ final class ProxyInterface implements NetworkInterface
         }
 
         $banMessage = null;
-
         if (($banEntry = $server->getNameBans()->getEntry($playerInfo->getUsername())) !== null) {
             $banReason = $banEntry->getReason();
             $banMessage = $banReason === "" ? KnownTranslationFactory::pocketmine_disconnect_ban_noReason() : KnownTranslationFactory::pocketmine_disconnect_ban($banReason);
@@ -284,16 +282,15 @@ final class ProxyInterface implements NetworkInterface
         }
 
         $event->call();
-
         if (!$event->isAllowed()) {
             $session->disconnect($event->getFinalDisconnectReason(), $event->getFinalDisconnectScreenMessage());
             return;
         }
 
+        $this->plugin->setCache($playerInfo->getXuid(), $cache, $protocolID);
         Closure::bind(function () use ($entityId): void {
             $onPlayerCreated = $this->onPlayerCreated(...);
             $onFail = $this->disconnectWithError(...);
-
             $this->setAuthenticationStatus(true, true, null, "");
             $this->server->createPlayer($this, $this->info, $this->authenticated, $this->cachedOfflinePlayerData)->onCompletion(
                 function (Player $player) use ($entityId, $onPlayerCreated): void {
@@ -305,7 +302,7 @@ final class ProxyInterface implements NetworkInterface
                         $onPlayerCreated($this);
                     }, $player, $player)->call($player);
                 },
-                fn () => $onFail("Failed to create player")
+                static fn () => $onFail("Failed to create player")
             );
         }, $session, $session)->call($session);
     }
@@ -325,6 +322,11 @@ final class ProxyInterface implements NetworkInterface
             return;
         }
 
+		$xuid = $session->getPlayerInfo()?->getXuid();
+		if ($xuid !== null) {
+			$this->plugin->deleteCache($xuid);
+		}
+
         unset($this->sessions[$identifier]);
         $session->onClientDisconnect($reason);
         if ($notifyThread) {
@@ -335,16 +337,16 @@ final class ProxyInterface implements NetworkInterface
     public function sendOutgoing(int $identifier, Packet $packet, ?int $receiptId): void
     {
         $session = $this->sessions[$identifier] ?? null;
-        $encoder = PacketSerializer::encoder($session !== null ? $session->getProtocolId() : ProtocolInfo::CURRENT_PROTOCOL);
-        $packet->encode($encoder);
-        $this->sendOutgoingRaw($identifier, $encoder->getBuffer(), $receiptId);
+        $encoder = new ByteBufferWriter();
+        $packet->encode($encoder, $session !== null ? $session->getProtocolId() : ProtocolInfo::CURRENT_PROTOCOL);
+        $this->sendOutgoingRaw($identifier, $encoder->getData(), $receiptId);
     }
 
     public function sendOutgoingRaw(int $identifier, string $packet, ?int $receiptId): void
     {
 		$offset = 0;
 		$packetID = Binary::readUnsignedVarInt($packet, $offset) & DataPacket::PID_MASK;
-        $this->mainToThread->write(Binary::writeInt($identifier) . Binary::writeBool($this->decode[$packetID] ?? false) . $packet);
+        $this->mainToThread->write(Binary::writeInt($identifier) . Binary::writeBool($this->plugin->shouldPacketDecode($packetID)) . $packet);
         $this->sentBytes += strlen($packet);
         @socket_write($this->threadNotifier, "\00");
         if ($receiptId !== null && isset($this->sessions[$identifier])) {

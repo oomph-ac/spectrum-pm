@@ -30,7 +30,8 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client\packet;
 
-use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
+use pmmp\encoding\ByteBufferReader;
+use pmmp\encoding\ByteBufferWriter;
 
 final class DisconnectPacket extends ProxyPacket
 {
@@ -41,6 +42,6 @@ final class DisconnectPacket extends ProxyPacket
         return new DisconnectPacket();
     }
 
-    protected function decodePayload(PacketSerializer $in): void {}
-    protected function encodePayload(PacketSerializer $out): void {}
+    protected function decodePayload(ByteBufferReader $in, int $protocolID): void {}
+    protected function encodePayload(ByteBufferWriter $out, int $protocolID): void {}
 }

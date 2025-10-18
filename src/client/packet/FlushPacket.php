@@ -30,33 +30,19 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client\packet;
 
-use pocketmine\network\mcpe\protocol\PacketPool as PMPacketPool;
+use pmmp\encoding\ByteBufferReader;
+use pmmp\encoding\ByteBufferWriter;
 
-final class ProxyPacketPool extends PMPacketPool
+final class FlushPacket extends ProxyPacket
 {
-    private static ?ProxyPacketPool $_instance = null;
+    public const NETWORK_ID = ProxyPacketIds::FLUSH;
 
-    public function __construct()
+    public static function create(): FlushPacket
     {
-        parent::__construct();
-
-        $this->pool->setSize($this->pool->getSize() + 8);
-        $this->registerPacket(new ConnectionRequestPacket());
-        $this->registerPacket(new ConnectionResponsePacket());
-        $this->registerPacket(new FlushPacket());
-        $this->registerPacket(new LatencyPacket());
-        $this->registerPacket(new TransferPacket());
-        $this->registerPacket(new UpdateCachePacket());
-        $this->registerPacket(new DisconnectPacket());
-        $this->registerPacket(new LoginPacket());
+        return new FlushPacket();
     }
 
-    public static function getInstance(): ProxyPacketPool
-    {
-        if (ProxyPacketPool::$_instance === null) {
-            ProxyPacketPool::$_instance = new ProxyPacketPool();
-        }
+    protected function decodePayload(ByteBufferReader $in, int $protocolID): void {}
 
-        return ProxyPacketPool::$_instance;
-    }
+    protected function encodePayload(ByteBufferWriter $out, int $protocolID): void {}
 }

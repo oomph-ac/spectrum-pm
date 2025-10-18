@@ -31,6 +31,9 @@ declare(strict_types=1);
 namespace cooldogedev\Spectrum\client;
 
 use cooldogedev\spectral\Stream;
+use cooldogedev\Spectrum\client\packet\ProxyPacketIds;
+use pocketmine\network\mcpe\protocol\DataPacket;
+use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\network\mcpe\raklib\SnoozeAwarePthreadsChannelWriter;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
@@ -40,16 +43,18 @@ use function snappy_uncompress;
 use function strlen;
 use function substr;
 
-final class Client
-{
-    private const int PACKET_LENGTH_SIZE = 4;
+final class Client {
 
-    private const int PACKET_DECODE_NEEDED = 0x00;
-    private const int PACKET_DECODE_NOT_NEEDED = 0x01;
+    private const PACKET_LENGTH_SIZE = 4;
+
+    private const PACKET_DECODE_NEEDED = 0x00;
+    private const PACKET_DECODE_NOT_NEEDED = 0x01;
 
     private string $buffer = "";
 
+    private ?int $expected = ProxyPacketIds::CONNECTION_REQUEST;
     private int $length = 0;
+
     private bool $closed = false;
 
     public function __construct(
@@ -86,7 +91,20 @@ final class Client
 
         $payload = @snappy_uncompress(substr($this->buffer, 0, $this->length));
         if ($payload !== false) {
-            $this->writer->write(Binary::writeInt($this->id) . $payload);
+			if ($this->expected !== null) {
+				$offset = 0;
+				$packetID = Binary::readUnsignedVarInt($payload, $offset) & DataPacket::PID_MASK;
+				if ($packetID === $this->expected) {
+					$this->writer->write(Binary::writeInt($this->id) . $payload);
+					$this->expected = match ($packetID) {
+						ProxyPacketIds::CONNECTION_REQUEST => ProtocolInfo::REQUEST_CHUNK_RADIUS_PACKET,
+						ProtocolInfo::REQUEST_CHUNK_RADIUS_PACKET => ProtocolInfo::SET_LOCAL_PLAYER_AS_INITIALIZED_PACKET,
+						ProtocolInfo::SET_LOCAL_PLAYER_AS_INITIALIZED_PACKET => null,
+					};
+				}
+			} else {
+				$this->writer->write(Binary::writeInt($this->id) . $payload);
+			}
         }
 
 		$this->buffer = substr($this->buffer, $this->length);

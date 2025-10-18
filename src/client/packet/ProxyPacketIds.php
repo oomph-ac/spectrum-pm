@@ -34,11 +34,11 @@ interface ProxyPacketIds
 {
     public const CONNECTION_REQUEST = 500;
     public const CONNECTION_RESPONSE = 501;
-    public const LATENCY = 502;
-    public const TRANSFER = 503;
+    public const FLUSH = 502;
+    public const LATENCY = 503;
+    public const TRANSFER = 504;
+    public const UPDATE_CACHE = 505;
 
-    public const LOGIN = 504;
-    public const DISCONNECT = 505;
-    
-    public const EOB_NOTIFICATION = 506;
+    public const LOGIN = 506;
+    public const DISCONNECT = 507;
 }

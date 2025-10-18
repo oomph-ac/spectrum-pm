@@ -55,6 +55,7 @@ use function socket_recv;
 use function socket_strerror;
 use function socket_write;
 use function strlen;
+use function usleep;
 use const AF_INET;
 use const MSG_DONTWAIT;
 use const SOCK_STREAM;
@@ -100,7 +101,11 @@ final class APIThread extends Thread
         $this->write(ConnectionRequestPacket::create($this->token));
         $this->flush();
 
-        $connectionResponseBytes = $this->read();
+		$attempts = 10;
+		do {
+			$connectionResponseBytes = $this->read();
+			usleep(100);
+		} while ($connectionResponseBytes === null && $attempts++ < 10);
         if ($connectionResponseBytes === null) {
             $this->logger->error("Failed to read connection response");
             return;

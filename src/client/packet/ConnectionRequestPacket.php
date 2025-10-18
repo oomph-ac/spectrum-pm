@@ -30,52 +30,54 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client\packet;
 
-use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
+use pmmp\encoding\ByteBufferReader;
+use pmmp\encoding\ByteBufferWriter;
+use pmmp\encoding\LE;
+use pocketmine\network\mcpe\protocol\serializer\CommonTypes;
 use function json_decode;
 use function json_encode;
 use const JSON_INVALID_UTF8_IGNORE;
+use const JSON_THROW_ON_ERROR;
 
 final class ConnectionRequestPacket extends ProxyPacket
 {
     public const NETWORK_ID = ProxyPacketIds::CONNECTION_REQUEST;
 
-    public int $protocol;
     public string $address;
-    public string $token;
 
     public array $clientData;
     public array $identityData;
 
-    public static function create(int $protocolId, string $address, string $token, array $clientData, array $identityData): ConnectionRequestPacket
+    public int $protocolID;
+
+    public string $cache;
+
+    public static function create(string $address, array $clientData, array $identityData, int $protocolID, string $cache): ConnectionRequestPacket
     {
         $packet = new ConnectionRequestPacket();
-        $packet->protocol = $protocolId;
         $packet->address = $address;
-        $packet->token = $token;
         $packet->clientData = $clientData;
         $packet->identityData = $identityData;
+        $packet->protocolID = $protocolID;
+        $packet->cache = $cache;
         return $packet;
     }
 
-    public function decodePayload(PacketSerializer $in): void
+    public function decodePayload(ByteBufferReader $in, int $protocolID): void
     {
-        $this->protocol = $in->getVarInt();
-
-        $this->address = $in->getString();
-        $this->token = $in->getString();
-
-        $this->clientData = json_decode($in->getString(), true, JSON_INVALID_UTF8_IGNORE);
-        $this->identityData = json_decode($in->getString(), true, JSON_INVALID_UTF8_IGNORE);
+        $this->address = CommonTypes::getString($in);
+        $this->clientData = json_decode(CommonTypes::getString($in), true, JSON_INVALID_UTF8_IGNORE);
+        $this->identityData = json_decode(CommonTypes::getString($in), true, JSON_INVALID_UTF8_IGNORE);
+        $this->protocolID = LE::readSignedInt($in);
+        $this->cache = CommonTypes::getString($in);
     }
 
-    public function encodePayload(PacketSerializer $out): void
+    public function encodePayload(ByteBufferWriter $out, int $protocolID): void
     {
-        $out->putVarInt($this->protocol);
-
-        $out->putString($this->address);
-        $out->putString($this->token);
-
-        $out->putString(json_encode($this->clientData, JSON_INVALID_UTF8_IGNORE));
-        $out->putString(json_encode($this->identityData, JSON_INVALID_UTF8_IGNORE));
+		CommonTypes::putString($out, $this->address);
+		CommonTypes::putString($out, json_encode($this->clientData));
+		CommonTypes::putString($out, json_encode($this->identityData));
+		LE::writeSignedInt($out, $this->protocolID);
+		CommonTypes::putString($out, $this->cache);
     }
 }

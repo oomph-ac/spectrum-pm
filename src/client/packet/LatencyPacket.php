@@ -30,7 +30,9 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client\packet;
 
-use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
+use pmmp\encoding\ByteBufferReader;
+use pmmp\encoding\ByteBufferWriter;
+use pmmp\encoding\LE;
 
 final class LatencyPacket extends ProxyPacket
 {
@@ -47,16 +49,16 @@ final class LatencyPacket extends ProxyPacket
         return $packet;
     }
 
-    protected function decodePayload(PacketSerializer $in): void
+    protected function decodePayload(ByteBufferReader $in, int $protocolID): void
     {
-        $this->latency = $in->getLLong();
-        $this->timestamp = $in->getLLong();
+        $this->latency = LE::readUnsignedLong($in);
+        $this->timestamp = LE::readUnsignedLong($in);
     }
 
-    protected function encodePayload(PacketSerializer $out): void
+    protected function encodePayload(ByteBufferWriter $out, int $protocolID): void
     {
-        $out->putLLong($this->latency);
-        $out->putLLong($this->timestamp);
+        LE::writeUnsignedLong($out, $this->latency);
+		LE::writeUnsignedLong($out, $this->timestamp);
     }
 }
 

@@ -30,7 +30,9 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client\packet;
 
-use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
+use pmmp\encoding\ByteBufferReader;
+use pmmp\encoding\ByteBufferWriter;
+use pocketmine\network\mcpe\protocol\serializer\CommonTypes;
 
 final class ConnectionResponsePacket extends ProxyPacket
 {
@@ -47,15 +49,15 @@ final class ConnectionResponsePacket extends ProxyPacket
         return $packet;
     }
 
-    public function decodePayload(PacketSerializer $in): void
+    public function decodePayload(ByteBufferReader $in, int $protocolID): void
     {
-        $this->runtimeId = $in->getUnsignedVarLong();
-        $this->uniqueId = $in->getVarLong();
+		$this->runtimeId = CommonTypes::getActorRuntimeId($in);
+		$this->uniqueId = CommonTypes::getActorUniqueId($in);
     }
 
-    public function encodePayload(PacketSerializer $out): void
+    public function encodePayload(ByteBufferWriter $out, int $protocolID): void
     {
-        $out->putUnsignedVarLong($this->runtimeId);
-        $out->putVarLong($this->uniqueId);
+		CommonTypes::putActorRuntimeId($out, $this->runtimeId);
+		CommonTypes::putActorUniqueId($out, $this->uniqueId);
     }
 }
