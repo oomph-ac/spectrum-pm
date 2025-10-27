@@ -60,6 +60,7 @@ use pocketmine\network\mcpe\raklib\PthreadsChannelReader;
 use pocketmine\network\mcpe\raklib\PthreadsChannelWriter;
 use pocketmine\network\mcpe\StandardEntityEventBroadcaster;
 use pocketmine\network\mcpe\StandardPacketBroadcaster;
+use pocketmine\network\FilterNoisyPacketException;
 use pocketmine\network\NetworkInterface;
 use pocketmine\player\Player;
 use pocketmine\player\XboxLivePlayerInfo;
@@ -166,9 +167,10 @@ final class ProxyInterface implements NetworkInterface
                     default => null,
                 };
             } else {
-                $session?->handleDataPacket($packet, $buffer);
+                $session?->handleDataPacket($packet, $buffer);                
             }
         } catch (Exception $exception) {
+            if ($exception instanceof FilterNoisyPacketException) return;
             $this->disconnect($identifier, true, "Error occured during packet process");
             $this->plugin->getLogger()->logException($exception);
         }
